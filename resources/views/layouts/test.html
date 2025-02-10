@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart TV Présentation</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .slide {
+            height: 100vh;
+            display: none;
+            padding: 20px;
+        }
+        .slide.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slide-content {
+            text-align: center;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div id="presentation">
+            <!-- Les slides seront chargées ici via AJAX -->
+        </div>
+
+        <div class="controls position-fixed bottom-0 start-50 translate-middle-x p-3">
+            <button class="btn btn-primary" id="prevSlide">Précédent</button>
+            <button class="btn btn-primary" id="nextSlide">Suivant</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        class Presentation {
+        constructor() {
+            this.currentSlide = 0;
+            this.slides = [];
+            this.init();
+        }
+
+        init() {
+            // Charger les slides via AJAX
+            this.loadSlides();
+
+            // Event listeners
+            $('#prevSlide').click(() => this.previousSlide());
+            $('#nextSlide').click(() => this.nextSlide());
+
+            // Keyboard navigation
+            $(document).keydown((e) => {
+                if (e.key === 'ArrowRight') this.nextSlide();
+                if (e.key === 'ArrowLeft') this.previousSlide();
+            });
+        }
+
+        loadSlides() {
+            // Exemple d'appel AJAX pour charger les slides
+            $.ajax({
+                url: 'slides.json',
+                method: 'GET',
+                success: (data) => {
+                    this.slides = data;
+                    this.renderSlides();
+                    this.showSlide(0);
+                },
+                error: (err) => {
+                    console.error('Erreur de chargement des slides:', err);
+                }
+            });
+        }
+
+        renderSlides() {
+            const container = $('#presentation');
+            container.empty();
+
+            this.slides.forEach((slide, index) => {
+                container.append(`
+                    <div class="slide" id="slide-${index}">
+                        <div class="slide-content">
+                            <h2>${slide.title}</h2>
+                            <div class="content">${slide.content}</div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+        showSlide(index) {
+            $('.slide').removeClass('active');
+            $(`#slide-${index}`).addClass('active');
+            this.currentSlide = index;
+
+            // Mettre à jour l'état des boutons
+            $('#prevSlide').prop('disabled', index === 0);
+            $('#nextSlide').prop('disabled', index === this.slides.length - 1);
+        }
+
+        nextSlide() {
+            if (this.currentSlide < this.slides.length - 1) {
+                this.showSlide(this.currentSlide + 1);
+            }
+        }
+
+        previousSlide() {
+            if (this.currentSlide > 0) {
+                this.showSlide(this.currentSlide - 1);
+            }
+        }
+    }
+
+    // Initialiser la présentation
+    $(document).ready(() => {
+        new Presentation();
+    });
+    </script>
+</body>
+</html>
+

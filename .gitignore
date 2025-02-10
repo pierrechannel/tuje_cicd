@@ -1,0 +1,47 @@
+# PHP Unit Cache
+/.phpunit.cache
+/.phpunit.result.cache
+
+# Node.js dependencies
+/node_modules
+
+# Compiled assets
+/public/build
+/public/hot
+
+# Public storage and uploads
+/public/storage
+
+# Sensitive keys and environment files
+/storage/*.key
+/.env
+/.env.backup
+/.env.local
+/.env.*.local
+
+# Composer dependencies
+/vendor
+
+# Laravel specific files
+Homestead.json
+Homestead.yaml
+.env.production
+
+# Log files
+npm-debug.log
+yarn-error.log
+*.log
+
+# IDE and editor configuration files
+/.idea/
+/.vscode/
+/*.sublime-project
+/*.sublime-workspace
+
+# Miscellaneous
+/.fleet
+/.vercel
+
+# OS generated files
+.DS_Store
+Thumbs.db
