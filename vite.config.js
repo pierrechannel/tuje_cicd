@@ -8,10 +8,8 @@ export default defineConfig({
             refresh: true,
         }),
     ],
-
-   root: 'src',
-  build: {
-    outDir: '../dist',
-    emptyOutDir: true, // also necessary
-  }
+    build: {
+        outDir: 'public/build',
+        emptyOutDir: true,
+    }
 });

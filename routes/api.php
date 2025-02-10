@@ -93,7 +93,7 @@ Route::post('/clear-cache', [CacheController::class, 'clearCache']);
 Route::get('/transactions/{id}', [TransactionController::class, 'show']);
 Route::get('/transactions/{id}/pdf', [TransactionController::class, 'generatePdf']);
 Route::get('/customers/{customerId}/total-debt-amount', [DebtController::class, 'getTotalDebtAmount']);
-Route::get('/debts/customer-debts', [DebtController::class, 'getCustomerDebt']);
+//Route::get('/debts/customer-debts', [DebtController::class, 'getCustomerDebt']);
 
 
 
