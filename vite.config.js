@@ -8,8 +8,8 @@ export default defineConfig({
             refresh: true,
         }),
     ],
-    // build: {
-    //     outDir: 'public', // Configurez ici le répertoire de sortie
-    //     emptyOutDir: true, // (Optionnel) Vide le répertoire de sortie avant de construire
-    // }
+     build: {
+        outDir: 'public', // Configurez ici le répertoire de sortie
+        //emptyOutDir: true, // (Optionnel) Vide le répertoire de sortie avant de construire
+    }
 });
