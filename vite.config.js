@@ -9,7 +9,7 @@ export default defineConfig({
         }),
     ],
      build: {
-        outDir: 'public', // Configurez ici le répertoire de sortie
+        //outDir: 'public', // Configurez ici le répertoire de sortie
         //emptyOutDir: true, // (Optionnel) Vide le répertoire de sortie avant de construire
     }
 });
