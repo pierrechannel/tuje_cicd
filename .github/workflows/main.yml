@@ -1,0 +1,77 @@
+name: Deploy Laravel to FTP
+
+on:
+  push:
+    branches:
+      - main  # ou votre branche par défaut
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, zip
+    
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+    
+    - name: Install Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+    
+    - name: Generate key
+      run: php artisan key:generate
+    
+    - name: Directory Permissions
+      run: chmod -R 755 storage bootstrap/cache  # Revue des permissions
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        check-latest: true  # Ensures latest 18.x version
+
+    - name: Verify package files
+      run: |
+        if [ ! -f "package.json" ]; then
+          echo "Error: package.json not found"
+          exit 1
+        fi
+
+    - name: Install NPM dependencies
+      run: |
+        npm ci || npm install  # Fallback if ci fails
+        npm cache verify  # Verify npm cache integrity
+    
+    - name: Install NPM dependencies
+      run: npm ci  # Utilisation de ci pour des builds plus fiables
+    
+    - name: Build assets
+      run: npm run build
+    
+    - name: Create deployment archive
+      run: |
+        zip -r deployment.zip . -x "node_modules/*" "tests/*" ".git/*" ".github/*" "storage/framework/cache/*" "storage/framework/sessions/*" "storage/framework/views/*"
+    
+    - name: Upload to FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./
+        server-dir: public_html/  # Ajustez ceci selon votre chemin FTP
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/tests/**
+          **/storage/framework/cache/**
+          **/storage/framework/sessions/**
+          **/storage/framework/views/**
