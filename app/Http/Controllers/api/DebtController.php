@@ -153,7 +153,7 @@ return response()->json([
 
         return response()->json($debts);
     }
-    
+
     public function getTotalDebtAmount($customerId)
 {
     // Calculate the total sum of debts where the amount is greater than 0
@@ -196,7 +196,7 @@ return response()->json([
                 'last_payment_date' => $customers->first()->created_at,
             ];
         })->values()->toArray();
-    
+
         return response()->json($customerDebts);
     }
 }
