@@ -17,6 +17,11 @@ use App\Http\Controllers\CsrfCookieController;
 use App\Http\Controllers\CacheController;
 use Barryvdh\DomPDF\Facade as PDF;
 use App\Http\Controllers\api\LoginController;
+use App\Http\Controllers\api\ReportController;
+use App\Http\Controllers\api\TransactionReportController;
+use App\Http\Controllers\api\PaymentReportController;
+
+
 
 // For web routes
 Route::post('/login', [LoginController::class, 'login'])->name('login');
@@ -83,9 +88,44 @@ Route::get('/stats', [StatsController::class, 'index']);
 // Expense Categories Route
 Route::get('/categories', [ExpenseController::class, 'getCategories']);
 Route::post('/services/{service}/price', [PriceHistoryController::class, 'updatePrice']);
+Route::get('transactions/{id}/excel', [TransactionController::class, 'generateExcel']);
 
 
+// Routes pour les rapports
+Route::prefix('reports')->group(function () {
+    Route::get('/debt-summary', [App\Http\Controllers\api\ReportController::class, 'debtSummaryReport']);
+    Route::get('/debts-by-customer', [App\Http\Controllers\api\ReportController::class, 'debtsByCustomerReport']);
+    Route::get('/recent-payments', [App\Http\Controllers\api\ReportController::class, 'recentPaymentsReport']);
+    Route::get('/debt-trends', [App\Http\Controllers\api\ReportController::class, 'debtTrendsReport']);
+    Route::get('/overdue-debts', [App\Http\Controllers\api\ReportController::class, 'overdueDebtsReport']);
+    Route::get('/payment-performance', [App\Http\Controllers\api\ReportController::class, 'paymentPerformanceReport']);
+    Route::get('/customer/{customerId}', [App\Http\Controllers\api\ReportController::class, 'customerDebtReport']);
+    Route::get('/export-csv', [App\Http\Controllers\api\ReportController::class, 'exportDebtsCSV']);
+});
 
+// Transaction Summary Report
+Route::get('/reports/transaction-summary', [TransactionReportController::class, 'transactionSummary'])
+    ->name('reports.transaction-summary');
+
+// Customer Activity Report
+Route::get('/reports/customer-activity', [TransactionReportController::class, 'customerActivity'])
+    ->name('reports.customer-activity');
+
+// Debt Report
+Route::get('/reports/debt', [TransactionReportController::class, 'debtReport'])
+    ->name('reports.debt');
+
+// Service Performance Report
+Route::get('/reports/service-performance', [TransactionReportController::class, 'servicePerformance'])
+    ->name('reports.service-performance');
+
+// Excel Dashboard Report
+Route::get('/reports/dashboard-excel', [TransactionReportController::class, 'dashboardExcel'])
+    ->name('reports.dashboard-excel');
+
+// PDF Summary Report
+Route::get('/reports/summary-pdf', [TransactionReportController::class, 'summaryPdf'])
+    ->name('reports.summary-pdf');
 
 Route::post('/clear-cache', [CacheController::class, 'clearCache']);
 
@@ -95,6 +135,15 @@ Route::get('/transactions/{id}/pdf', [TransactionController::class, 'generatePdf
 Route::get('/customers/{customerId}/total-debt-amount', [DebtController::class, 'getTotalDebtAmount']);
 //Route::get('/debts/customer-debts', [DebtController::class, 'getCustomerDebt']);
 
+
+// Define routes for the ReportController
+Route::get('/reports/summary', [PaymentReportController::class, 'summaryReport'])->name('reports.summary');
+Route::get('/reports/detailed', [PaymentReportController::class, 'detailedReport'])->name('reports.detailed');
+Route::get('/reports/payment-methods', [PaymentReportController::class, 'paymentMethodReport'])->name('reports.paymentMethods');
+Route::get('/reports/customers', [PaymentReportController::class, 'customerReport'])->name('reports.customers');
+Route::get('/reports/monthly', [PaymentReportController::class, 'monthlyReport'])->name('reports.monthly');
+Route::get('/reports/yearly', [PaymentReportController::class, 'yearlyReport'])->name('reports.yearly');
+Route::get('/reports/overdue', [PaymentReportController::class, 'overdueReport'])->name('reports.overdue');
 
 
 /*

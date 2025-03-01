@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Management Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e9ecef;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px 20px;
+        }
+        .stat-card {
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .bg-light-primary {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .bg-light-success {
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        .bg-light-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        .bg-light-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        .text-truncate-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            padding: 48px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            z-index: 100;
+        }
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 48px);
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .nav-link {
+            color: #333;
+            font-weight: 500;
+            padding: .75rem 1.25rem;
+        }
+        .nav-link.active {
+            color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .nav-link:hover {
+            color: #0d6efd;
+        }
+        .table-responsive {
+            border-radius: 10px;
+        }
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">Debt Management</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="w-100"></div>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3" href="#">
+                    <i class="bi bi-person-fill me-1"></i> Admin
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="sidebar-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" id="dashboard-link">
+                                <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="customers-link">
+                                <i class="bi bi-people me-2"></i> Customers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="payments-link">
+                                <i class="bi bi-credit-card me-2"></i> Payments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="trends-link">
+                                <i class="bi bi-graph-up me-2"></i> Debt Trends
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="overdue-link">
+                                <i class="bi bi-exclamation-triangle me-2"></i> Overdue Debts
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="performance-link">
+                                <i class="bi bi-bar-chart me-2"></i> Performance
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" id="export-link">
+                                <i class="bi bi-download me-2"></i> Export
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                <div id="content-area">
+                    <!-- Dashboard content will be loaded here -->
+                    <div id="dashboard-section">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Dashboard</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button id="refresh-dashboard" type="button" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                                    </button>
+                                </div>
+                                <span class="text-muted small" id="generated-at"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card stat-card bg-light-primary">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle p-3 bg-primary">
+                                                <i class="bi bi-currency-dollar text-white"></i>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h6 class="card-title mb-0">Total Debt</h6>
+                                                <h2 class="mt-2 mb-0" id="total-debt-amount">--</h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card stat-card bg-light-success">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle p-3 bg-success">
+                                                <i class="bi bi-check-circle text-white"></i>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h6 class="card-title mb-0">Paid Debts</h6>
+                                                <h2 class="mt-2 mb-0" id="paid-debts-count">--</h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card stat-card bg-light-warning">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle p-3 bg-warning">
+                                                <i class="bi bi-hourglass-split text-white"></i>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h6 class="card-title mb-0">Pending Debts</h6>
+                                                <h2 class="mt-2 mb-0" id="pending-debts-count">--</h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="card stat-card bg-light-danger">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle p-3 bg-danger">
+                                                <i class="bi bi-wallet2 text-white"></i>
+                                            </div>
+                                            <div class="ms-3">
+                                                <h6 class="card-title mb-0">Avg. Debt</h6>
+                                                <h2 class="mt-2 mb-0" id="average-debt-amount">--</h2>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-7">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Debt Trends</h5>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-secondary active" data-months="3">3M</button>
+                                            <button class="btn btn-outline-secondary" data-months="6">6M</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="position-relative" style="height: 300px;">
+                                            <canvas id="trends-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">Repayment Performance</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="position-relative" style="height: 300px;">
+                                            <canvas id="performance-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Recent Payments</h5>
+                                        <a href="#" class="btn btn-sm btn-outline-primary" id="view-all-payments">View All</a>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Customer</th>
+                                                        <th>Date</th>
+                                                        <th>Amount</th>
+                                                        <th>Method</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="recent-payments-table">
+                                                    <tr>
+                                                        <td colspan="4" class="text-center">Loading...</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-0">Top Customers by Debt</h5>
+                                        <a href="#" class="btn btn-sm btn-outline-primary" id="view-all-customers">View All</a>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Customer</th>
+                                                        <th>Total Debt</th>
+                                                        <th>Debts</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="top-customers-table">
+                                                    <tr>
+                                                        <td colspan="4" class="text-center">Loading...</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customers Section -->
+                    <div id="customers-section" class="d-none">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Customers</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="input-group me-2">
+                                    <input type="text" class="form-control" id="customer-search" placeholder="Search customer...">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Customer Name</th>
+                                                <th>Total Debt</th>
+                                                <th>Debt Count</th>
+                                                <th>Paid</th>
+                                                <th>Pending</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customers-table">
+                                            <tr>
+                                                <td colspan="7" class="text-center">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Detail Modal -->
+                    <div class="modal fade" id="customerDetailModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="customerDetailModalLabel">Customer Details</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="position-relative" id="customer-detail-content">
+                                        <div class="loading">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="row mb-4">
+                                            <div class="col-md-6">
+                                                <h6>Customer Information</h6>
+                                                <p class="mb-1"><strong>Name:</strong> <span id="cd-name"></span></p>
+                                                <p class="mb-1"><strong>Contact:</strong> <span id="cd-contact"></span></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Debt Summary</h6>
+                                                <p class="mb-1"><strong>Current Debt:</strong> <span id="cd-current-debt"></span></p>
+                                                <p class="mb-1"><strong>Total Paid:</strong> <span id="cd-total-paid"></span></p>
+                                            </div>
+                                        </div>
+
+                                        <ul class="nav nav-tabs" id="customerDetailTabs" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="debts-tab" data-bs-toggle="tab" data-bs-target="#debts" type="button" role="tab" aria-controls="debts" aria-selected="true">Debt History</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab" aria-controls="payments" aria-selected="false">Payment History</button>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content pt-3" id="customerDetailTabContent">
+                                            <div class="tab-pane fade show active" id="debts" role="tabpanel" aria-labelledby="debts-tab">
+                                                <div class="table-responsive">
+                                                    <table class="table table-striped">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>ID</th>
+                                                                <th>Amount</th>
+                                                                <th>Status</th>
+                                                                <th>Date</th>
+                                                                <th>Transaction</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="cd-debts-table">
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
+                                                <div class="table-responsive">
+                                                    <table class="table table-striped">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>ID</th>
+                                                                <th>Amount</th>
+                                                                <th>Date</th>
+                                                                <th>Method</th>
+                                                                <th>Debt ID</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="cd-payments-table">
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payments Section -->
+                    <div id="payments-section" class="d-none">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Recent Payments</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="input-group me-2">
+                                    <select class="form-select" id="payment-days-filter">
+                                        <option value="7">Last 7 days</option>
+                                        <option value="15">Last 15 days</option>
+                                        <option value="30" selected>Last 30 days</option>
+                                        <option value="60">Last 60 days</option>
+                                        <option value="90">Last 90 days</option>
+                                    </select>
+                                </div>
+                                <button id="refresh-payments" type="button" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light-success">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Total Payments</h6>
+                                        <h2 class="mt-2 mb-0" id="total-payments-count">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light-primary">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Total Amount</h6>
+                                        <h2 class="mt-2 mb-0" id="total-payments-amount">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light-warning">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Period</h6>
+                                        <h2 class="mt-2 mb-0" id="payments-period">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Customer</th>
+                                                <th>Date</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Debt ID</th>
+                                                <th>Transaction</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="payments-table">
+                                            <tr>
+                                                <td colspan="7" class="text-center">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trends Section -->
+                    <div id="trends-section" class="d-none">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Debt Trends</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="input-group me-2">
+                                    <select class="form-select" id="trends-months-filter">
+                                        <option value="3">Last 3 months</option>
+                                        <option value="6" selected>Last 6 months</option>
+                                        <option value="12">Last 12 months</option>
+                                    </select>
+                                </div>
+                                <button id="refresh-trends" type="button" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Monthly Debt Trends</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 400px;">
+                                    <canvas id="main-trends-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Trends Data</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>New Debts</th>
+                                                <th>Payments Received</th>
+                                                <th>Net Change</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="trends-table">
+                                            <tr>
+                                                <td colspan="5" class="text-center">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overdue Section -->
+                    <div id="overdue-section" class="d-none">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">Overdue Debts</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="input-group me-2">
+                                    <select class="form-select" id="overdue-days-filter">
+                                        <option value="15">15+ days</option>
+                                        <option value="30" selected>30+ days</option>
+                                        <option value="60">60+ days</option>
+                                        <option value="90">90+ days</option>
+                                    </select>
+                                </div>
+                                <button id="refresh-overdue" type="button" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light-danger">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Total Overdue</h6>
+                                        <h2 class="mt-2 mb-0" id="total-overdue-amount">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light-warning">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Overdue Debts</h6>
+                                        <h2 class="mt-2 mb-0" id="overdue-count">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light-primary">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Threshold</h6>
+                                        <h2 class="mt-2 mb-0" id="overdue-threshold">--</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Customer</th>
+                                                <th>Amount</th>
+                                                <th>Created</th>
+                                                <th>Days Overdue</th>
+                                                <th>Transaction</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="overdue-table">
+                                            <tr>
+                                                <td colspan="7" class="text-center">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Section -->
+                    <div id="performance-section" class="d-none">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">
+                                <div id="performance-section" class="d-none">
+                                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                                        <h1 class="h2">Repayment Performance</h1>
+                                        <div class="btn-toolbar mb-2 mb-md-0">
+                                            <button id="refresh-performance" type="button" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-4">
+                                        <div class="col-md-4">
+                                            <div class="card bg-light-primary">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Overall Repayment Rate</h6>
+                                                    <h2 class="mt-2 mb-0" id="overall-repayment-rate">--</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card bg-light-success">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Total Payments Received</h6>
+                                                    <h2 class="mt-2 mb-0" id="total-payments-received">--</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card bg-light-warning">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Total Debt Created</h6>
+                                                    <h2 class="mt-2 mb-0" id="total-debt-created">--</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">Monthly Repayment Rate</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div style="height: 400px;">
+                                                <canvas id="monthly-performance-chart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">Monthly Performance Data</h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Month</th>
+                                                            <th>Debt Amount</th>
+                                                            <th>Payment Amount</th>
+                                                            <th>Repayment Rate</th>
+                                                            <th>Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="performance-table">
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">Loading...</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Export Section -->
+                                <div id="export-section" class="d-none">
+                                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                                        <h1 class="h2">Export Data</h1>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card mb-4">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Export Options</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <p class="mb-3">Download data reports for your records or analysis.</p>
+
+                                                    <div class="d-grid gap-3">
+                                                        <a href="/api/reports/debts/export" class="btn btn-primary">
+                                                            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export All Debts (CSV)
+                                                        </a>
+
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h6>Custom Export</h6>
+                                                                <form id="custom-export-form">
+                                                                    <div class="mb-3">
+                                                                        <label for="export-date-range" class="form-label">Date Range</label>
+                                                                        <select class="form-select" id="export-date-range">
+                                                                            <option value="30">Last 30 days</option>
+                                                                            <option value="90">Last 90 days</option>
+                                                                            <option value="180">Last 6 months</option>
+                                                                            <option value="365">Last 12 months</option>
+                                                                            <option value="all">All time</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label for="export-data-type" class="form-label">Data Type</label>
+                                                                        <select class="form-select" id="export-data-type">
+                                                                            <option value="debts">Debts</option>
+                                                                            <option value="payments">Payments</option>
+                                                                            <option value="customers">Customers</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="d-grid">
+                                                                        <button type="submit" class="btn btn-outline-primary">
+                                                                            <i class="bi bi-download me-2"></i>Generate Custom Export
+                                                                        </button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="card mb-4">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Recent Exports</h5>
+                                                </div>
+                                                <div class="card-body p-0">
+                                                    <div class="list-group list-group-flush" id="recent-exports-list">
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <h6 class="mb-1">Debts_Report_20250301.csv</h6>
+                                                                <small class="text-muted">Generated today at 10:45 AM</small>
+                                                            </div>
+                                                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                                                                <i class="bi bi-download"></i>
+                                                            </a>
+                                                        </div>
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <h6 class="mb-1">Payments_Q1_2025.csv</h6>
+                                                                <small class="text-muted">Generated Feb 28, 2025</small>
+                                                            </div>
+                                                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                                                                <i class="bi bi-download"></i>
+                                                            </a>
+                                                        </div>
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <h6 class="mb-1">Customer_Summary_2025.csv</h6>
+                                                                <small class="text-muted">Generated Feb 15, 2025</small>
+                                                            </div>
+                                                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                                                                <i class="bi bi-download"></i>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Scheduled Reports</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <p>Set up automatic report generation and delivery.</p>
+                                                    <div class="d-grid">
+                                                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#scheduleReportModal">
+                                                            <i class="bi bi-calendar-check me-2"></i>Schedule New Report
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+
+                <!-- Schedule Report Modal -->
+                <div class="modal fade" id="scheduleReportModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Schedule Report</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="schedule-report-form">
+                                    <div class="mb-3">
+                                        <label for="report-name" class="form-label">Report Name</label>
+                                        <input type="text" class="form-control" id="report-name" placeholder="Monthly Debt Summary">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="report-type" class="form-label">Report Type</label>
+                                        <select class="form-select" id="report-type">
+                                            <option value="debt-summary">Debt Summary</option>
+                                            <option value="payment-summary">Payment Summary</option>
+                                            <option value="overdue-debts">Overdue Debts</option>
+                                            <option value="performance">Performance Report</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="report-frequency" class="form-label">Frequency</label>
+                                        <select class="form-select" id="report-frequency">
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="quarterly">Quarterly</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="delivery-method" class="form-label">Delivery Method</label>
+                                        <select class="form-select" id="delivery-method">
+                                            <option value="email">Email</option>
+                                            <option value="download">Download Only</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3" id="email-recipient-group">
+                                        <label for="email-recipients" class="form-label">Email Recipients</label>
+                                        <input type="text" class="form-control" id="email-recipients" placeholder="email@example.com, another@example.com">
+                                        <div class="form-text">Separate multiple email addresses with commas</div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="save-schedule">Schedule Report</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bootstrap Bundle with Popper -->
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+                <script>
+                    // Sample data for demonstration purposes
+                    const sampleData = {
+                        debtSummary: {
+                            total_debt_amount: 256750.00,
+                            total_debts_count: 428,
+                            paid_debts_count: 187,
+                            pending_debts_count: 241,
+                            average_debt_amount: 599.88,
+                            generated_at: "2025-03-01 08:30:45"
+                        },
+                        recentPayments: {
+                            payments: [
+                                {payment_id: 1245, payment_date: "2025-02-28", amount: 750.00, payment_method: "Bank Transfer", customer_name: "John Doe", debt_id: 3567, transaction_id: 4501},
+                                {payment_id: 1244, payment_date: "2025-02-27", amount: 1200.00, payment_method: "Credit Card", customer_name: "Jane Smith", debt_id: 3566, transaction_id: 4499},
+                                {payment_id: 1243, payment_date: "2025-02-25", amount: 430.50, payment_method: "Mobile Payment", customer_name: "Robert Johnson", debt_id: 3562, transaction_id: 4495},
+                                {payment_id: 1242, payment_date: "2025-02-24", amount: 825.75, payment_method: "Bank Transfer", customer_name: "Alice Williams", debt_id: 3559, transaction_id: 4490}
+                            ],
+                            period: "30 days",
+                            total_payments: 42,
+                            total_amount: 24568.25,
+                            generated_at: "2025-03-01 08:30:45"
+                        },
+                        topCustomers: [
+                            {id: 125, name: "John Doe", total_debt: 5800.00, debt_count: 4, paid_count: 2, pending_count: 2},
+                            {id: 136, name: "Jane Smith", total_debt: 4200.00, debt_count: 3, paid_count: 1, pending_count: 2},
+                            {id: 142, name: "Robert Johnson", total_debt: 3750.00, debt_count: 5, paid_count: 3, pending_count: 2},
+                            {id: 118, name: "Alice Williams", total_debt: 3250.00, debt_count: 2, paid_count: 0, pending_count: 2}
+                        ],
+                        debtTrends: {
+                            trends: [
+                                {month: "Oct 2024", new_debts: 42500.00, payments_received: 38750.00, net_change: -3750.00},
+                                {month: "Nov 2024", new_debts: 45200.00, payments_received: 41300.00, net_change: -3900.00},
+                                {month: "Dec 2024", new_debts: 50700.00, payments_received: 45600.00, net_change: -5100.00},
+                                {month: "Jan 2025", new_debts: 43800.00, payments_received: 40200.00, net_change: -3600.00},
+                                {month: "Feb 2025", new_debts: 47500.00, payments_received: 44300.00, net_change: -3200.00},
+                                {month: "Mar 2025", new_debts: 12400.00, payments_received: 10800.00, net_change: -1600.00}
+                            ],
+                            generated_at: "2025-03-01 08:30:45"
+                        },
+                        overdueDebts: {
+                            overdue_debts: [
+                                {debt_id: 3425, customer_name: "John Doe", customer_id: 125, amount: 1200.00, created_at: "2025-01-15", days_overdue: 45, transaction_id: 4201},
+                                {debt_id: 3456, customer_name: "Jane Smith", customer_id: 136, amount: 950.00, created_at: "2025-01-20", days_overdue: 40, transaction_id: 4225},
+                                {debt_id: 3478, customer_name: "Robert Johnson", customer_id: 142, amount: 750.00, created_at: "2025-01-25", days_overdue: 35, transaction_id: 4245}
+                            ],
+                            total_overdue: 2900.00,
+                            count: 3,
+                            threshold_days: 30,
+                            generated_at: "2025-03-01 08:30:45"
+                        },
+                        paymentPerformance: {
+                            overall_repayment_rate: 85.25,
+                            total_debt_created: 242100.00,
+                            total_payments_received: 206390.00,
+                            monthly_performance: [
+                                {month: "Oct 2024", debt_amount: 42500.00, payment_amount: 36750.00, repayment_rate: 86.47},
+                                {month: "Nov 2024", debt_amount: 45200.00, payment_amount: 38900.00, repayment_rate: 86.06},
+                                {month: "Dec 2024", debt_amount: 50700.00, payment_amount: 42500.00, repayment_rate: 83.83},
+                                {month: "Jan 2025", debt_amount: 43800.00, payment_amount: 37450.00, repayment_rate: 85.50},
+                                {month: "Feb 2025", debt_amount: 47500.00, payment_amount: 40690.00, repayment_rate: 85.66},
+                                {month: "Mar 2025", debt_amount: 12400.00, payment_amount: 10100.00, repayment_rate: 81.45}
+                            ],
+                            generated_at: "2025-03-01 08:30:45"
+                        }
+                    };
+
+                    // DOM elements
+                    const dashboardSection = document.getElementById('dashboard-section');
+                    const customersSection = document.getElementById('customers-section');
+                    const paymentsSection = document.getElementById('payments-section');
+                    const trendsSection = document.getElementById('trends-section');
+                    const overdueSection = document.getElementById('overdue-section');
+                    const performanceSection = document.getElementById('performance-section');
+                    const exportSection = document.getElementById('export-section');
+
+                    // Navigation links
+                    const dashboardLink = document.getElementById('dashboard-link');
+                    const customersLink = document.getElementById('customers-link');
+                    const paymentsLink = document.getElementById('payments-link');
+                    const trendsLink = document.getElementById('trends-link');
+                    const overdueLink = document.getElementById('overdue-link');
+                    const performanceLink = document.getElementById('performance-link');
+                    const exportLink = document.getElementById('export-link');
+
+                    // Helper function to format currency
+                    function formatCurrency(amount) {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                        }).format(amount);
+                    }
+
+                    // Helper function to format date
+                    function formatDate(dateString) {
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
+
+                    // Function to show section
+                    function showSection(section) {
+                        // Hide all sections
+                        dashboardSection.classList.add('d-none');
+                        customersSection.classList.add('d-none');
+                        paymentsSection.classList.add('d-none');
+                        trendsSection.classList.add('d-none');
+                        overdueSection.classList.add('d-none');
+                        performanceSection.classList.add('d-none');
+                        exportSection.classList.add('d-none');
+
+                        // Remove active class from all links
+                        dashboardLink.classList.remove('active');
+                        customersLink.classList.remove('active');
+                        paymentsLink.classList.remove('active');
+                        trendsLink.classList.remove('active');
+                        overdueLink.classList.remove('active');
+                        performanceLink.classList.remove('active');
+                        exportLink.classList.remove('active');
+
+                        // Show selected section
+                        section.classList.remove('d-none');
+
+                        // Add active class to selected link
+                        if (section === dashboardSection) dashboardLink.classList.add('active');
+                        if (section === customersSection) customersLink.classList.add('active');
+                        if (section === paymentsSection) paymentsLink.classList.add('active');
+                        if (section === trendsSection) trendsLink.classList.add('active');
+                        if (section === overdueSection) overdueLink.classList.add('active');
+                        if (section === performanceSection) performanceLink.classList.add('active');
+                        if (section === exportSection) exportLink.classList.add('active');
+                    }
+
+                    // Initialize dashboard
+                    function initDashboard() {
+                        // Load debt summary
+                        document.getElementById('total-debt-amount').textContent = formatCurrency(sampleData.debtSummary.total_debt_amount);
+                        document.getElementById('paid-debts-count').textContent = sampleData.debtSummary.paid_debts_count;
+                        document.getElementById('pending-debts-count').textContent = sampleData.debtSummary.pending_debts_count;
+                        document.getElementById('average-debt-amount').textContent = formatCurrency(sampleData.debtSummary.average_debt_amount);
+                        document.getElementById('generated-at').textContent = `Last updated: ${formatDate(sampleData.debtSummary.generated_at)}`;
+
+                        // Initialize charts
+                        initDashboardCharts();
+
+                        // Load recent payments
+                        const paymentsTableBody = document.getElementById('recent-payments-table');
+                        paymentsTableBody.innerHTML = '';
+
+                        sampleData.recentPayments.payments.slice(0, 4).forEach(payment => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${payment.customer_name}</td>
+                                <td>${formatDate(payment.payment_date)}</td>
+                                <td>${formatCurrency(payment.amount)}</td>
+                                <td><span class="badge bg-light text-dark">${payment.payment_method}</span></td>
+                            `;
+                            paymentsTableBody.appendChild(row);
+                        });
+
+                        // Load top customers
+                        const customersTableBody = document.getElementById('top-customers-table');
+                        customersTableBody.innerHTML = '';
+
+                        sampleData.topCustomers.forEach(customer => {
+                            const row = document.createElement('tr');
+                            const statusClass = customer.pending_count > customer.paid_count ? 'warning' : 'success';
+                            const statusText = customer.pending_count > customer.paid_count ? 'Pending' : 'Good';
+
+                            row.innerHTML = `
+                                <td>${customer.name}</td>
+                                <td>${formatCurrency(customer.total_debt)}</td>
+                                <td>${customer.debt_count}</td>
+                                <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                            `;
+                            customersTableBody.appendChild(row);
+                        });
+                    }
+
+                    // Initialize dashboard charts
+                    function initDashboardCharts() {
+                        // Trends chart
+                        const trendsChart = document.getElementById('trends-chart').getContext('2d');
+                        new Chart(trendsChart, {
+                            type: 'line',
+                            data: {
+                                labels: sampleData.debtTrends.trends.map(trend => trend.month),
+                                datasets: [
+                                    {
+                                        label: 'New Debts',
+                                        data: sampleData.debtTrends.trends.map(trend => trend.new_debts),
+                                        borderColor: '#dc3545',
+                                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                        tension: 0.4,
+                                        fill: true
+                                    },
+                                    {
+                                        label: 'Payments',
+                                        data: sampleData.debtTrends.trends.map(trend => trend.payments_received),
+                                        borderColor: '#198754',
+                                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                                        tension: 0.4,
+                                        fill: true
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: function(value) {
+                                                return '$' + value.toLocaleString();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Performance chart
+                        const performanceChart = document.getElementById('performance-chart').getContext('2d');
+                        new Chart(performanceChart, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Paid', 'Pending'],
+                                datasets: [{
+                                    data: [sampleData.debtSummary.paid_debts_count, sampleData.debtSummary.pending_debts_count],
+                                    backgroundColor: ['#198754', '#ffc107'],
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom'
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Event listeners for navigation
+                    dashboardLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(dashboardSection);
+                    });
+
+                    customersLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(customersSection);
+                        // Initialize customers section
+                        // Code for loading customer data would go here
+                    });
+
+                    paymentsLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(paymentsSection);
+                        // Initialize payments section
+                        // Code for loading payment data would go here
+                    });
+
+                    trendsLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(trendsSection);
+                        // Initialize trends section
+                        // Code for loading trends data would go here
+                    });
+
+                    overdueLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(overdueSection);
+                        // Initialize overdue section
+                        // Code for loading overdue data would go here
+                    });
+
+                    performanceLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(performanceSection);
+                        // Initialize performance section
+                        // Code for loading performance data would go here
+                    });
+
+                    exportLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showSection(exportSection);
+                        // Initialize export section
+                    });
+
+                    // Initialize the application
+                    document.addEventListener('DOMContentLoaded', function() {
+                        initDashboard();
+
+                        // Show loading spinner
+                        setTimeout(function() {
+                            document.querySelectorAll('.loading').forEach(loader => {
+                                loader.style.display = 'none';
+                            });
+                        }, 1000);
+                    });
+                </script>
+            </body>
+            </html>

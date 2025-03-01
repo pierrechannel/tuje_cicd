@@ -728,28 +728,52 @@ $(document).ready(function() {
             return; // Exit the function if the ID is missing
         }
 
-        // Fetch the PDF
-        const response = await fetch(`/api/transactions/${transactionId}/pdf`, {
-            headers: {
-                'Accept': 'application/pdf',
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
+        // Fetch the Excel file
+const response = await fetch(`/api/transactions/${transactionId}/excel`, {
+    headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    }
+});
 
-        // Check if the response is okay
-        if (!response.ok) throw new Error('Erreur lors du téléchargement du PDF');
-        else console.log("Facture télechargé avec succes");
+if (response.ok) {
+    // Create a blob from the response
+    const blob = await response.blob();
 
-        // Convert response to blob
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `facture-${transactionId}.pdf`; // Set the filename for the download
-        document.body.appendChild(a);
-        a.click(); // Trigger the download
-        window.URL.revokeObjectURL(url); // Clean up
-        a.remove(); // Remove the anchor element
+    // Create a URL for the blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary link element
+    const a = document.createElement('a');
+    a.href = url;
+
+    // Set the filename from the Content-Disposition header if available
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'invoice.xlsx';
+
+    if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1];
+        }
+    }
+
+    a.download = filename;
+
+    // Append the link to the body
+    document.body.appendChild(a);
+
+    // Programmatically click the link to trigger the download
+    a.click();
+
+    // Clean up
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+} else {
+    // Handle error
+    console.error('Failed to download Excel file:', response.status);
+    alert('Failed to download Excel file. Please try again later.');
+}
     } catch (error) {
         showToast('error', error.message); // Handle any errors
     }
@@ -922,6 +946,388 @@ function getInvoiceStyles() {
         }
     `;
 }
+});
+</script>
+<!-- Updated Invoice Modal Content -->
+<div class="modal fade" id="invoiceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 bg-primary text-white">
+                <h5 class="modal-title">Facture</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" id="invoiceContent">
+                <!-- Invoice content will be loaded here -->
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-outline-primary" id="printInvoice">
+                    <i class="bi bi-printer me-1"></i> Imprimer
+                </button>
+                <button type="button" class="btn btn-primary" id="downloadInvoice">
+                    <i class="bi bi-download me-1"></i> Télécharger PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS for Modern Invoice -->
+<style>
+    .invoice-wrapper {
+        background-color: #fff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    .invoice-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .invoice-title {
+        color: #3b82f6;
+        font-weight: 700;
+        font-size: 2.2rem;
+        letter-spacing: -0.025em;
+        margin-bottom: 0;
+    }
+
+    .company-logo {
+        height: 60px;
+        width: auto;
+    }
+
+    .invoice-id {
+        color: #475569;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .invoice-date {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .label-heading {
+        color: #475569;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .customer-info-card {
+        background-color: #f8fafc;
+        border-radius: 0.5rem;
+        border-left: 4px solid #3b82f6;
+    }
+
+    .table.invoice-table th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        padding: 1rem;
+    }
+
+    .table.invoice-table td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .table.invoice-table tbody tr {
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .totals-table {
+        background-color: #f8fafc;
+        border-radius: 0.5rem;
+    }
+
+    .totals-table th {
+        color: #475569;
+        font-weight: 600;
+        border: none;
+        padding: 0.75rem 1.25rem;
+    }
+
+    .totals-table td {
+        border: none;
+        text-align: right;
+        padding: 0.75rem 1.25rem;
+    }
+
+    .grand-total {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+
+    .payment-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-block;
+    }
+
+    .badge-paid {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-partial {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-unpaid {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .footer-text {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+
+    .invoice-footer {
+        border-top: 1px solid #edf2f7;
+    }
+
+    @media print {
+        .modal-footer,
+        .btn-close {
+            display: none !important;
+        }
+
+        .modal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 0;
+            padding: 0;
+            overflow: visible !important;
+        }
+
+        .modal-dialog {
+            margin: 0;
+            padding: 0;
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .modal-content {
+            border: none;
+            box-shadow: none;
+        }
+
+        .invoice-wrapper {
+            padding: 2cm !important;
+        }
+    }
+</style>
+
+<!-- JavaScript for loading the invoice -->
+<script>
+// Function to load invoice content with the new design
+function loadInvoice(transaction) {
+    const invoiceDate = new Date(transaction.created_at).toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // Format numbers with thousand separators
+    const formatNumber = (num) => {
+        return num.toLocaleString('fr-FR', {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2
+        });
+    };
+
+    // Calculate amounts
+    const totalHT = transaction.total_amount / 1.2;
+    const tva = transaction.total_amount - totalHT;
+    const remainingAmount = transaction.total_amount - transaction.amount_paid;
+
+    // Get status badge class and text
+    const getStatusBadge = (status) => {
+        const statusMap = {
+            'paid': ['badge-paid', 'PAYÉ'],
+            'partial': ['badge-partial', 'PARTIELLEMENT PAYÉ'],
+            'unpaid': ['badge-unpaid', 'NON PAYÉ']
+        };
+        return statusMap[status] || ['badge-unpaid', status.toUpperCase()];
+    };
+
+    const [badgeClass, statusText] = getStatusBadge(transaction.payment_status);
+
+    const invoiceContent = `
+        <div class="invoice-wrapper py-4 px-4 px-md-5" data-transaction-id="${transaction.id}">
+            <!-- Invoice Header -->
+            <header class="invoice-header p-3 p-md-4 rounded">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h1 class="invoice-title mb-0">FACTURE</h1>
+                        <p class="invoice-id mb-0 mt-2">#${transaction.id.toString().padStart(5, '0')}</p>
+                        <p class="invoice-date mb-0">${invoiceDate}</p>
+                    </div>
+                    <div class="col-md-6 text-md-end mt-4 mt-md-0">
+                        <h2 class="h4 mb-1">VOTRE ENTREPRISE</h2>
+                        <p class="mb-0 text-secondary">
+                            Adresse de l'entreprise<br>
+                            Code postal, Ville<br>
+                            Tél: 01 23 45 67 89<br>
+                            contact@entreprise.com
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Client Information -->
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <h3 class="label-heading mb-3">FACTURER À</h3>
+                    <div class="customer-info-card p-3">
+                        <h4 class="h5 mb-1">${transaction.customer.name}</h4>
+                        <p class="mb-0 text-secondary">
+                            ${transaction.customer.address || 'Adresse non spécifiée'}<br>
+                            ${transaction.customer.email || 'Email non spécifié'}
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-4 mt-md-0">
+                    <div class="mb-3">
+                        <h3 class="label-heading mb-3">STATUT</h3>
+                        <span class="payment-badge ${badgeClass}">${statusText}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Items -->
+            <div class="invoice-items mt-5">
+                <h3 class="label-heading mb-3">DÉTAILS DE LA FACTURE</h3>
+                <div class="table-responsive">
+                    <table class="table invoice-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 45%">Service</th>
+                                <th class="text-end">Prix unitaire</th>
+                                <th class="text-center">Quantité</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transaction.items.map(item => `
+                                <tr>
+                                    <td class="fw-medium">${item.service.name}</td>
+                                    <td class="text-end">${formatNumber(item.price)} Fbu</td>
+                                    <td class="text-center">${item.quantity}</td>
+                                    <td class="text-end fw-medium">${formatNumber(item.price * item.quantity)} Fbu</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="row mt-4 justify-content-end">
+                <div class="col-md-6 col-lg-5">
+                    <table class="table totals-table mb-0">
+                        <tbody>
+                            <tr>
+                                <th>Total HT:</th>
+                                <td>${formatNumber(totalHT)} Fbu</td>
+                            </tr>
+                            <tr>
+                                <th>TVA (20%):</th>
+                                <td>${formatNumber(tva)} Fbu</td>
+                            </tr>
+                            <tr>
+                                <th>Total TTC:</th>
+                                <td class="fw-bold">${formatNumber(transaction.total_amount)} Fbu</td>
+                            </tr>
+                            <tr>
+                                <th>Montant payé:</th>
+                                <td>${formatNumber(transaction.amount_paid)} Fbu</td>
+                            </tr>
+                            ${transaction.payment_status !== 'paid' ? `
+                                <tr>
+                                    <th>Reste à payer:</th>
+                                    <td class="grand-total">${formatNumber(remainingAmount)} Fbu</td>
+                                </tr>
+                            ` : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="invoice-footer mt-5 pt-4 text-center">
+                <p class="footer-text mb-0">
+                    VOTRE ENTREPRISE - SIRET: XX XXX XXX XXX XXX - TVA: FRXXXXXXXXX<br>
+                    Merci de votre confiance!
+                </p>
+            </footer>
+        </div>
+    `;
+
+    $('#invoiceContent').html(invoiceContent);
+    console.log('Loaded transaction ID:', transaction.id);
+}
+
+// Update the print invoice function for better printing
+function printInvoice() {
+    const content = document.getElementById('invoiceContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Facture</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+            <style>
+                ${document.querySelector('style').innerText}
+                @media print {
+                    body {
+                        padding: 0;
+                        margin: 0;
+                    }
+                    .invoice-wrapper {
+                        padding: 2cm !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Slight delay to ensure styles are loaded
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 300);
+}
+
+// Update the event handler for the print button
+$(document).ready(function() {
+    $(document).on('click', '#printInvoice', function() {
+        printInvoice();
+    });
 });
 </script>
 @endsection

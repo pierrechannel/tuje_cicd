@@ -32,6 +32,9 @@ Route::get('/transactions', function () {
 Route::get('/debts', function () {
     return view('debts');
 });
+Route::get('/debts-report', function () {
+    return view('debtsreports');
+});
 Route::get('/all_debts', function () {
     return view('debtsAll');
 });

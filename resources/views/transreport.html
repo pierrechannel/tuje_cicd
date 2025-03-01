@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h1 class="mb-4">Payment Reports Dashboard</h1>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#summary">Summary</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detailed">Detailed</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#methods">Payment Methods</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#customers">Customers</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#monthly">Monthly</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#yearly">Yearly</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#overdue">Overdue</button>
+            </li>
+        </ul>
+
+        <div class="tab-content mt-3">
+            <!-- Summary Report -->
+            <div class="tab-pane fade show active" id="summary">
+                <h4>Summary Report</h4>
+                <div class="mt-3" id="summaryContent"></div>
+            </div>
+
+            <!-- Detailed Report -->
+            <div class="tab-pane fade" id="detailed">
+                <h4>Detailed Report</h4>
+                <form id="dateRangeForm" class="row g-3 mt-2">
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="startDate" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="endDate" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary">Generate</button>
+                    </div>
+                </form>
+                <div class="mt-3" id="detailedContent"></div>
+            </div>
+
+            <!-- Payment Methods Report -->
+            <div class="tab-pane fade" id="methods">
+                <h4>Payment Methods Report</h4>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div id="methodsTable"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="methodsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Report -->
+            <div class="tab-pane fade" id="customers">
+                <h4>Customer Report</h4>
+                <div class="mt-3" id="customerContent"></div>
+            </div>
+
+            <!-- Monthly Report -->
+            <div class="tab-pane fade" id="monthly">
+                <h4>Monthly Payments</h4>
+                <canvas id="monthlyChart" class="mt-3"></canvas>
+            </div>
+
+            <!-- Yearly Report -->
+            <div class="tab-pane fade" id="yearly">
+                <h4>Yearly Payments</h4>
+                <canvas id="yearlyChart" class="mt-3"></canvas>
+            </div>
+
+            <!-- Overdue Report -->
+            <div class="tab-pane fade" id="overdue">
+                <h4>Overdue Payments</h4>
+                <div class="mt-3" id="overdueContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize charts
+            let methodsChart, monthlyChart, yearlyChart;
+
+            // Tab change handler
+            $('#reportTabs button').on('shown.bs.tab', function(e) {
+                const target = $(e.target).data('bs-target');
+                loadReport(target.substring(1));
+            });
+
+            // Load initial report
+            loadReport('summary');
+
+            // Date range form submit
+            $('#dateRangeForm').submit(function(e) {
+                e.preventDefault();
+                loadDetailedReport();
+            });
+
+            async function loadReport(reportType) {
+                switch(reportType) {
+                    case 'summary':
+                        loadSummary();
+                        break;
+                    case 'detailed':
+                        // Wait for user input
+                        break;
+                    case 'methods':
+                        loadPaymentMethods();
+                        break;
+                    case 'customers':
+                        loadCustomerReport();
+                        break;
+                    case 'monthly':
+                        loadMonthlyReport();
+                        break;
+                    case 'yearly':
+                        loadYearlyReport();
+                        break;
+                    case 'overdue':
+                        loadOverdueReport();
+                        break;
+                }
+            }
+
+            async function loadSummary() {
+                const response = await fetch('/api/payments/summary');
+                const data = await response.json();
+                renderTable('#summaryContent', ['Customer Name', 'Total Paid'], data);
+            }
+
+            async function loadDetailedReport() {
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+
+                const response = await fetch(`/api/payments/detailed?start_date=${startDate}&end_date=${endDate}`);
+                const data = await response.json();
+                renderTable('#detailedContent',
+                    ['Payment ID', 'Customer', 'Amount', 'Date', 'Method'],
+                    data.map(p => [
+                        p.id,
+                        p.debt.customer.name,
+                        `$${p.amount}`,
+                        new Date(p.payment_date).toLocaleDateString(),
+                        p.payment_method
+                    ])
+                );
+            }
+
+            async function loadPaymentMethods() {
+                const response = await fetch('/api/payments/methods');
+                const data = await response.json();
+
+                // Render table
+                renderTable('#methodsTable', ['Method', 'Count', 'Total'],
+                    data.map(m => [m.payment_method, m.count, `$${m.total}`])
+                );
+
+                // Render chart
+                if (methodsChart) methodsChart.destroy();
+                const ctx = document.getElementById('methodsChart').getContext('2d');
+                methodsChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(m => m.payment_method),
+                        datasets: [{
+                            label: 'Total Amount',
+                            data: data.map(m => m.total),
+                            backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc']
+                        }]
+                    }
+                });
+            }
+
+            async function loadCustomerReport() {
+                const response = await fetch('/api/payments/customer');
+                const data = await response.json();
+                renderTable('#customerContent',
+                    ['Customer', 'Payments Count', 'Total Paid'],
+                    data.map(c => [c.customer_name, c.payment_count, `$${c.total_paid}`])
+                );
+            }
+
+            async function loadMonthlyReport() {
+                const response = await fetch('/api/payments/monthly');
+                const data = await response.json();
+
+                if (monthlyChart) monthlyChart.destroy();
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+                monthlyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(m => `${m.year}-${m.month}`),
+                        datasets: [{
+                            label: 'Monthly Payments',
+                            data: data.map(m => m.total),
+                            borderColor: '#4e73df',
+                            tension: 0.1
+                        }]
+                    }
+                });
+            }
+
+            async function loadYearlyReport() {
+                const response = await fetch('/api/payments/yearly');
+                const data = await response.json();
+
+                if (yearlyChart) yearlyChart.destroy();
+                const ctx = document.getElementById('yearlyChart').getContext('2d');
+                yearlyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(y => y.year),
+                        datasets: [{
+                            label: 'Yearly Payments',
+                            data: data.map(y => y.total),
+                            borderColor: '#1cc88a',
+                            tension: 0.1
+                        }]
+                    }
+                });
+            }
+
+            async function loadOverdueReport() {
+                const response = await fetch('/api/payments/overdue');
+                const data = await response.json();
+                renderTable('#overdueContent',
+                    ['Debt ID', 'Amount', 'Due Date'],
+                    data.map(d => [
+                        d.debt_id,
+                        `$${d.debt_amount}`,
+                        new Date(d.due_date).toLocaleDateString()
+                    ])
+                );
+            }
+
+            function renderTable(selector, headers, rows) {
+                const content = `
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
+                                <tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                $(selector).html(content);
+            }
+        });
+    </script>
+</body>
+</html>
