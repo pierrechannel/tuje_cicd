@@ -91,7 +91,7 @@
 
         {{-- Navigation Menu --}}
         <div class="sidebar-menu p-3 flex-grow-1 overflow-y-auto">
-           
+
             <nav class="nav-menu">
                 {{-- Primary Navigation --}}
                 <div class="nav-section mb-4">
@@ -162,7 +162,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link d-flex align-items-center py-2 px-3 {{ request()->routeIs('reports.*') ? 'active bg-primary-subtle text-primary' : 'text-body' }}">
+                            <a href="/debts-report" class="nav-link d-flex align-items-center py-2 px-3 {{ request()->routeIs('reports.*') ? 'active bg-primary-subtle text-primary' : 'text-body' }}">
                                 <i class="bi bi-file-earmark-text me-2"></i>
                                 <span>Rapports</span>
                             </a>
@@ -399,11 +399,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
     });
     </script>
-    
+
     <script>
     // Assume userRole comes from your backend or a global variable
     const userRole = sessionStorage.getItem('userRole');  // Change this value for testing ('user', 'manager', or 'admin')
-   
+
     // Select the dashboard item element
     const dashboardItem = document.getElementById('dashboard-item');
     const userItem = document.getElementById('user-item')
