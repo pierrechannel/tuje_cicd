@@ -539,8 +539,8 @@
 
         // Format currency
         const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(amount);
-        };
+    return new Intl.NumberFormat('fr-BI', { style: 'currency', currency: 'BIF' }).format(amount);
+};
 
         // Format date
         const formatDate = (dateString) => {
