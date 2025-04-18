@@ -33,6 +33,10 @@ Route::post('/api/login', [LoginController::class, 'login'])->name('login');
 //Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
 
 Route::get('/debts/summary', [DebtController::class, 'getDebtSummary']);
+Route::get('/customers/{customerId}/debts', [DebtController::class, 'getDebtsForCustomer']);
+Route::get('/customers/{customerId}/debts/pdf', [DebtController::class, 'downloadDebtsPdf']);
+
+
 
 //use App\Http\Controllers\CsrfCookieController;
 
@@ -73,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('payments', PaymentController::class);
 
     Route::get('/debts/summary', [DebtController::class, 'getDebtSummary']);
+    Route::get('/debts-per-customer', [DebtController::class, 'getDebtsPerCustomer']);
+
 
     // Additional Debt Routes
     Route::get('/customers/{customerId}/debts', [DebtController::class, 'getCustomerDebts']);

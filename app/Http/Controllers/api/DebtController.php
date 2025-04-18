@@ -5,7 +5,9 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Debt;
+use App\Models\Customer;
 use App\Models\Transaction;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Models\Payment; // Ensure you have imported the Payment model
 use Illuminate\Support\Facades\Validator;
@@ -199,5 +201,82 @@ return response()->json([
 
         return response()->json($customerDebts);
     }
+
+    public function getDebtsPerCustomer()
+{
+    // Get all customers with their debts
+    $debtsGrouped = Debt::with(['customer', 'transaction'])
+        ->get()
+        ->groupBy('customer.id')
+        ->map(function ($debts) {
+            return [
+                'customer' => $debts->first()->customer,
+                'debts' => $debts->map(function ($debt) {
+                    return [
+                        'id' => $debt->id,
+                        'transaction_id' => $debt->transaction_id,
+                        'amount' => $debt->amount,
+                        'status' => $debt->status,
+                        'created_at' => $debt->created_at,
+                        'transaction' => $debt->transaction,
+                    ];
+                })->toArray(),
+            ];
+        })
+        ->values();
+
+    return response()->json($debtsGrouped);
+}
+
+public function getDebtsForCustomer($customerId)
+{
+    $customer = Customer::find($customerId);
+
+    if (!$customer) {
+        return response()->json(['message' => 'Customer not found'], 404);
+    }
+
+    $debts = Debt::with('transaction')
+        ->where('customer_id', $customerId)
+        ->get();
+
+    $response = [
+        'customer' => $customer,
+        'debts' => $debts->map(function ($debt) {
+            return [
+                'id' => $debt->id,
+                'transaction_id' => $debt->transaction_id,
+                'amount' => $debt->amount,
+                'status' => $debt->status,
+                'created_at' => $debt->created_at,
+                'transaction' => $debt->transaction,
+            ];
+        }),
+    ];
+
+    return response()->json($response);
+}
+
+public function downloadDebtsPdf($customerId)
+{
+    $customer = Customer::find($customerId);
+
+    if (!$customer) {
+        return response()->json(['message' => 'Customer not found'], 404);
+    }
+
+    $debts = Debt::with('transaction')
+        ->where('customer_id', $customerId)
+        ->get();
+
+    $pdf = Pdf::loadView('customer_debts', [
+        'customer' => $customer,
+        'debts' => $debts
+    ]);
+
+    return $pdf->download('dettes_client_' . $customer->id . '.pdf');
+}
+
+
 }
 
