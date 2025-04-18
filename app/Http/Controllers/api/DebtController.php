@@ -8,6 +8,7 @@ use App\Models\Debt;
 use App\Models\Customer;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Models\Service;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Models\Payment; // Ensure you have imported the Payment model
@@ -260,61 +261,101 @@ public function getDebtsForCustomer($customerId)
 
 public function downloadDebtsPdf($customerId)
 {
-    $customer = Customer::find($customerId);
+    try {
+        // Find customer with eager loading to reduce queries
+        $customer = Customer::findOrFail($customerId);
 
-    if (!$customer) {
-        return response()->json(['message' => 'Customer not found'], 404);
-    }
-
-    // Get all debts for the customer with transaction details and transaction items
-    $debts = Debt::with([
-        'transaction',
-        'transaction.payments',
-        'transaction.items' // Include transaction items
-    ])
-    ->where('customer_id', $customerId)
-    ->get();
-
-    // Calculate total debt amount
-    $totalDebtAmount = $debts->sum('amount');
-
-    // Get payment history for this customer's debts
-    $debtIds = $debts->pluck('id')->toArray();
-    $payments = Payment::whereIn('debt_id', $debtIds)
-        ->orderBy('payment_date', 'desc')
+        // Get all debts for the customer with optimized eager loading
+        $debts = Debt::with([
+            'transaction',
+            'transaction.items.service' // Include service details for better reporting
+        ])
+        ->where('customer_id', $customerId)
         ->get();
 
-    // Prepare debt details for PDF
-    $detailedDebts = $debts->map(function ($debt) {
-        $transaction = $debt->transaction;
+        // Early return if no debts found
+        if ($debts->isEmpty()) {
+            return response()->json(['message' => 'No debts found for this customer'], 404);
+        }
 
-        // Get transaction items if available
-        $transactionItems = $transaction->items ?? collect([]);
+        // Calculate total debt amount
+        $totalDebtAmount = $debts->sum('amount');
 
-        return [
-            'id' => $debt->id,
-            'amount' => $debt->amount,
-            'original_amount' => $transaction->amount,
-            'status' => $debt->status,
-            'created_at' => $debt->created_at->format('Y-m-d'),
-            'transaction_date' => $transaction->date,
-            'transaction_details' => $transaction->details ?? 'No details available',
-            'transaction_reference' => $transaction->reference_number ?? 'N/A',
-            'amount_paid' => $transaction->amount_paid ?? 0,
-            'remaining_balance' => $debt->amount > 0 ? $debt->amount : 0,
-            'transaction_items' => $transactionItems, // Add transaction items
-        ];
-    });
+        // Get payment history for this customer's debts
+        $debtIds = $debts->pluck('id')->toArray();
+        $payments = Payment::whereIn('debt_id', $debtIds)
+            ->orderBy('payment_date', 'desc')
+            ->get();
 
-    $pdf = Pdf::loadView('customer_debts', [
-        'customer' => $customer,
-        'debts' => $detailedDebts,
-        'payments' => $payments,
-        'totalDebtAmount' => $totalDebtAmount,
-        'generatedDate' => now()->format('Y-m-d')
-    ]);
+        // Prepare debt details for PDF with better handling of relationships
+        $detailedDebts = $debts->map(function ($debt) {
+            $transaction = $debt->transaction;
 
-    return $pdf->download('dettes_client_' . $customer->id . '.pdf');
+            // Handle potential null transaction
+            if (!$transaction) {
+                return [
+                    'id' => $debt->id,
+                    'amount' => $debt->amount,
+                    'original_amount' => $debt->amount,
+                    'status' => $debt->status,
+                    'created_at' => $debt->created_at->format('Y-m-d'),
+                    'transaction_date' => 'N/A',
+                    'transaction_details' => 'No transaction available',
+                    'transaction_reference' => 'N/A',
+                    'amount_paid' => 0,
+                    'remaining_balance' => $debt->amount,
+                    'transaction_items' => []
+                ];
+            }
+
+            // Calculate original amount correctly
+            $originalAmount = isset($transaction->total_amount) ?
+                $transaction->total_amount :
+                ($transaction->amount_paid + $transaction->getRemainingAmountAttribute());
+
+            return [
+                'id' => $debt->id,
+                'amount' => $debt->amount,
+                'original_amount' => $originalAmount,
+                'status' => $debt->status,
+                'created_at' => $debt->created_at->format('Y-m-d'),
+                'transaction_date' => $transaction->created_at ? $transaction->created_at->format('Y-m-d') : 'N/A',
+                'transaction_details' => $transaction->details ?? 'No details available',
+                'transaction_reference' => $transaction->reference ?? $transaction->id ?? 'N/A',
+                'amount_paid' => $transaction->amount_paid ?? 0,
+                'remaining_balance' => max($debt->amount, 0), // Ensure non-negative balance
+                'transaction_items' => $transaction->items->map(function($item) {
+                    return [
+                        'service' => $item->service ? $item->service->name : 'Unknown service',
+                        'quantity' => $item->quantity,
+                        'price' => $item->price,
+                        'total' => $item->quantity * $item->price
+                    ];
+                })
+            ];
+        });
+
+        // Add PDF metadata and set paper size
+        $pdf = Pdf::loadView('customer_debts', [
+            'customer' => $customer,
+            'debts' => $detailedDebts,
+            'payments' => $payments,
+            'totalDebtAmount' => $totalDebtAmount,
+            'paidAmount' => $payments->sum('amount'),
+            'generatedDate' => now()->format('Y-m-d H:i')
+        ])->setPaper('a4');
+
+        // Generate a more descriptive filename
+        $filename = 'dettes_' . str_replace(' ', '_', $customer->name) . '_' . $customer->id . '_' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json(['message' => 'Customer not found'], 404);
+    } catch (\Exception $e) {
+        // Log the error for debugging
+        \Log::error('PDF generation error: ' . $e->getMessage());
+        return response()->json(['message' => 'Failed to generate PDF', 'error' => $e->getMessage()], 500);
+    }
 }
 
 
