@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Debt;
 use App\Models\Customer;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Models\Payment; // Ensure you have imported the Payment model
@@ -265,13 +266,52 @@ public function downloadDebtsPdf($customerId)
         return response()->json(['message' => 'Customer not found'], 404);
     }
 
-    $debts = Debt::with('transaction')
-        ->where('customer_id', $customerId)
+    // Get all debts for the customer with transaction details and transaction items
+    $debts = Debt::with([
+        'transaction',
+        'transaction.payments',
+        'transaction.items' // Include transaction items
+    ])
+    ->where('customer_id', $customerId)
+    ->get();
+
+    // Calculate total debt amount
+    $totalDebtAmount = $debts->sum('amount');
+
+    // Get payment history for this customer's debts
+    $debtIds = $debts->pluck('id')->toArray();
+    $payments = Payment::whereIn('debt_id', $debtIds)
+        ->orderBy('payment_date', 'desc')
         ->get();
+
+    // Prepare debt details for PDF
+    $detailedDebts = $debts->map(function ($debt) {
+        $transaction = $debt->transaction;
+
+        // Get transaction items if available
+        $transactionItems = $transaction->items ?? collect([]);
+
+        return [
+            'id' => $debt->id,
+            'amount' => $debt->amount,
+            'original_amount' => $transaction->amount,
+            'status' => $debt->status,
+            'created_at' => $debt->created_at->format('Y-m-d'),
+            'transaction_date' => $transaction->date,
+            'transaction_details' => $transaction->details ?? 'No details available',
+            'transaction_reference' => $transaction->reference_number ?? 'N/A',
+            'amount_paid' => $transaction->amount_paid ?? 0,
+            'remaining_balance' => $debt->amount > 0 ? $debt->amount : 0,
+            'transaction_items' => $transactionItems, // Add transaction items
+        ];
+    });
 
     $pdf = Pdf::loadView('customer_debts', [
         'customer' => $customer,
-        'debts' => $debts
+        'debts' => $detailedDebts,
+        'payments' => $payments,
+        'totalDebtAmount' => $totalDebtAmount,
+        'generatedDate' => now()->format('Y-m-d')
     ]);
 
     return $pdf->download('dettes_client_' . $customer->id . '.pdf');
