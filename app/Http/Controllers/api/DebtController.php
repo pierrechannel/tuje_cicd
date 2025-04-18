@@ -14,6 +14,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment; // Ensure you have imported the Payment model
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB; // Import the DB Facade
+use Illuminate\Support\Facades\Log;
+
 
 class DebtController extends Controller
 {
@@ -264,28 +266,36 @@ public function downloadDebtsPdf($customerId)
     try {
         // Find customer with eager loading to reduce queries
         $customer = Customer::findOrFail($customerId);
+        Log::info('Customer found', ['customer' => $customer->toArray()]);
 
-        // Get all debts for the customer with optimized eager loading
+        // Get all debts for the customer with optimized eager loading and filter by status
         $debts = Debt::with([
             'transaction',
             'transaction.items.service' // Include service details for better reporting
         ])
         ->where('customer_id', $customerId)
+        ->whereIn('status', ['pending', 'unpaid']) // Filter debts by status
         ->get();
+        Log::info('Debts retrieved', ['debts' => $debts->toArray()]);
 
         // Early return if no debts found
         if ($debts->isEmpty()) {
+            Log::warning('No debts found for customer', ['customer_id' => $customerId]);
             return response()->json(['message' => 'No debts found for this customer'], 404);
         }
 
         // Calculate total debt amount
         $totalDebtAmount = $debts->sum('amount');
+        Log::info('Total debt amount calculated', ['totalDebtAmount' => $totalDebtAmount]);
 
         // Get payment history for this customer's debts
         $debtIds = $debts->pluck('id')->toArray();
+        Log::info('Debt IDs for payment retrieval', ['debtIds' => $debtIds]);
+
         $payments = Payment::whereIn('debt_id', $debtIds)
             ->orderBy('payment_date', 'desc')
             ->get();
+        Log::info('Payments retrieved', ['payments' => $payments->toArray()]);
 
         // Prepare debt details for PDF with better handling of relationships
         $detailedDebts = $debts->map(function ($debt) {
@@ -334,6 +344,7 @@ public function downloadDebtsPdf($customerId)
                 })
             ];
         });
+        Log::info('Detailed debts prepared', ['detailedDebts' => $detailedDebts->toArray()]);
 
         // Add PDF metadata and set paper size
         $pdf = Pdf::loadView('customer_debts', [
@@ -350,13 +361,15 @@ public function downloadDebtsPdf($customerId)
 
         return $pdf->download($filename);
     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::error('Customer not found', ['customer_id' => $customerId, 'error' => $e->getMessage()]);
         return response()->json(['message' => 'Customer not found'], 404);
     } catch (\Exception $e) {
         // Log the error for debugging
-        \Log::error('PDF generation error: ' . $e->getMessage());
+        Log::error('PDF generation error', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Failed to generate PDF', 'error' => $e->getMessage()], 500);
     }
 }
+
 
 
 }

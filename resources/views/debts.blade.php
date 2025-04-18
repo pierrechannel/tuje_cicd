@@ -194,6 +194,10 @@ $(document).ready(function() {
                             <button class="btn btn-sm btn-primary view-customer-debts" data-id="${customer.id}">
                                 <i class="bi bi-eye"></i> Détails
                             </button>
+
+                            <a href="/api/customers/${customer.id}/debts/pdf" class="btn btn-sm btn-secondary" target="_blank">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
                         </td>
                     </tr>
                 `;
