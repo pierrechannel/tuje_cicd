@@ -787,12 +787,12 @@ function loadInvoice(transaction) {
         <div class="invoice-content" data-transaction-id="${transaction.id}">
             <div class="invoice-header d-flex justify-content-between mb-4">
                 <div class="company-info">
-                    <h2 class="company-name">VOTRE ENTREPRISE</h2>
+                    <h2 class="company-name">JUST MULTI SERVICES</h2>
                     <p class="company-details">
-                        Adresse de l'entreprise<br>
+                        Buhumuza Centre ville<br>
                         Code postal, Ville<br>
-                        Téléphone: 01 23 45 67 89<br>
-                        Email: contact@entreprise.com
+                        Téléphone: +257 69787478<br>
+
                     </p>
                 </div>
                 <div class="invoice-info text-end">
@@ -836,17 +836,11 @@ function loadInvoice(transaction) {
                 <div class="col-md-5">
                     <table class="table table-bordered">
                         <tr>
-                            <th>Total HT:</th>
+                            <th>Total</th>
                             <td class="text-end">${(transaction.total_amount / 1.2).toLocaleString('fr-FR')} Fbu</td>
                         </tr>
-                        <tr>
-                            <th>TVA (20%):</th>
-                            <td class="text-end">${(transaction.total_amount - transaction.total_amount / 1.2).toLocaleString('fr-FR')} Fbu</td>
-                        </tr>
-                        <tr>
-                            <th>Total TTC:</th>
-                            <td class="text-end">${transaction.total_amount.toLocaleString('fr-FR')} Fbu</td>
-                        </tr>
+
+
                         <tr>
                             <th>Montant payé:</th>
                             <td class="text-end">${transaction.amount_paid.toLocaleString('fr-FR')} Fbu</td>
@@ -867,7 +861,7 @@ function loadInvoice(transaction) {
 
             <div class="footer mt-5 text-center">
                 <p class="small">
-                    VOTRE ENTREPRISE - SIRET: XX XXX XXX XXX XXX - TVA: FRXXXXXXXXX<br>
+                    Just multi services 
                     Merci de votre confiance !
                 </p>
             </div>
@@ -965,7 +959,7 @@ function getInvoiceStyles() {
                     <i class="bi bi-printer me-1"></i> Imprimer
                 </button>
                 <button type="button" class="btn btn-primary" id="downloadInvoice">
-                    <i class="bi bi-download me-1"></i> Télécharger PDF
+                    <i class="bi bi-download me-1"></i> Télécharger Excel
                 </button>
             </div>
         </div>
@@ -1271,7 +1265,7 @@ function loadInvoice(transaction) {
             <!-- Footer -->
             <footer class="invoice-footer mt-5 pt-4 text-center">
                 <p class="footer-text mb-0">
-                    VOTRE ENTREPRISE - SIRET: XX XXX XXX XXX XXX - TVA: FRXXXXXXXXX<br>
+                    Justmutliservices<br>
                     Merci de votre confiance!
                 </p>
             </footer>

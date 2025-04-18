@@ -46,11 +46,13 @@ class TransactionController extends Controller
             $service = Service::findOrFail($item['service_id']);
             $total_amount += $service->price * $item['quantity'];
         }
+        $payment_status = $this->determinePaymentStatus($request->amount_paid, $total_amount);
+
 
         // Create transaction with total_amount
         $transaction = Transaction::create([
             'customer_id' => $request->customer_id,
-            'payment_status' => $request->payment_status,
+            'payment_status' => $payment_status,
             'amount_paid' => $request->amount_paid,
             'total_amount' => $total_amount,
             'created_at' => now(),
@@ -61,6 +63,7 @@ class TransactionController extends Controller
         foreach ($request->items as $item) {
             $service = Service::findOrFail($item['service_id']);
             $currentPrice = $service->getCurrentPrice();
+
 
             TransactionItem::create([
                 'transaction_id' => $transaction->id,
@@ -75,6 +78,25 @@ class TransactionController extends Controller
 
         return response()->json($transaction->load('items.service'), 201);
     }
+    /**
+ * Determine payment status based on amount paid and total amount
+ *
+ * @param float $amountPaid
+ * @param float $totalAmount
+ * @return string
+ */
+private function determinePaymentStatus($amountPaid, $totalAmount)
+{
+    if ($amountPaid <= 0) {
+        return 'unpaid';
+    }
+
+    if ($amountPaid >= $totalAmount) {
+        return 'paid';
+    }
+
+    return 'partial';
+}
 
     public function show($id)
     {
