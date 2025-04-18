@@ -288,11 +288,14 @@ public function downloadDebtsPdf($customerId)
         $totalDebtAmount = $debts->sum('amount');
         Log::info('Total debt amount calculated', ['totalDebtAmount' => $totalDebtAmount]);
 
-        // Get payment history for this customer's debts
+        // Get payment history for this customer's debts with eager loading and optimized query
         $debtIds = $debts->pluck('id')->toArray();
         Log::info('Debt IDs for payment retrieval', ['debtIds' => $debtIds]);
 
-        $payments = Payment::whereIn('debt_id', $debtIds)
+        $payments = Payment::with('debt') // Eager load the debt relationship
+            ->whereHas('debt', function ($query) use ($debtIds) {
+                $query->whereIn('id', $debtIds);
+            })
             ->orderBy('payment_date', 'desc')
             ->get();
         Log::info('Payments retrieved', ['payments' => $payments->toArray()]);
@@ -369,8 +372,4 @@ public function downloadDebtsPdf($customerId)
         return response()->json(['message' => 'Failed to generate PDF', 'error' => $e->getMessage()], 500);
     }
 }
-
-
-
 }
-

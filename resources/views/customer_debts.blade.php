@@ -300,7 +300,7 @@
     <div style="margin-top: 20px; margin-bottom: 10px;" class="highlight">
         <p class="section-title">Dette Totale en Cours : {{ number_format($totalDebtAmount, 2) }}</p>
     </div>
-
+{{--
     @if(count($payments) > 0)
     <div class="payment-history">
         <div class="section-title">Historique des Paiements</div>
@@ -337,7 +337,7 @@
         <div class="section-title">Historique des Paiements</div>
         <p style="font-style: italic;">Aucun enregistrement de paiement trouvé pour ce client.</p>
     </div>
-    @endif
+    @endif --}}
 
     <div class="footer">
         <p>Ceci est un enregistrement officiel des dettes du client. Pour toute question ou divergence, veuillez nous contacter.</p>
