@@ -81,67 +81,6 @@ class DebtController extends Controller
         return response()->json($debt);
     }
 
-    public function updateDebtPayment(Request $request, $debtId)
-    {
-
- // Validate the incoming payment data
- $validator = Validator::make($request->all(), [
-    'amount_paid' => 'required|numeric|min:0',
-]);
-
-if ($validator->fails()) {
-    return response()->json(['errors' => $validator->errors()], 422);
-}
-
-// Start a database transaction
-DB::transaction(function () use ($request, $debtId) {
-    // Find the debt
-    $debt = Debt::findOrFail($debtId);
-    $amountPaid = $request->amount_paid;
-    $remainingDebt = $debt->amount - $amountPaid;
-
-    // Update the debt's amount and status
-    if ($remainingDebt <= 0) {
-        $debt->status = 'paid';
-        $debt->amount = 0; // Mark as fully paid
-    } else {
-        $debt->amount = $remainingDebt; // Update remaining amount
-    }
-
-    $debt->save(); // Save the updated debt
-
-    // Find the related transaction using the transaction_id in the debt
-    $transaction = Transaction::findOrFail($debt->transaction_id);
-
-    // Update the amount paid for the transaction
-    $transaction->amount_paid += $amountPaid; // Increment the amount paid
-    $transaction->save(); // Save the updated transaction
-
-    // Find the related payment associated with the debt
-    $payment = Payment::where('debt_id', $debt->id)->first();
-
-    if ($payment) {
-        // Update the existing payment amount
-        $payment->amount += $amountPaid; // Increment the payment amount
-        $payment->payment_date = date('Y-m-d H:i:s'); // Update payment date if provided
-        $payment->payment_method = 'cash'; // Update payment method if provided
-        $payment->save(); // Save the updated payment
-    } else {
-        // Optionally handle the case where no payment record exists
-        Payment::create([
-            'debt_id' => $debt->id,
-            'amount' => $amountPaid,
-            'payment_date' => date('Y-m-d H:i:s'),
-            'payment_method' => 'cash',
-        ]);
-    }
-});
-
-return response()->json([
-    'message' => 'Payment updated, transaction amount modified, and payment recorded successfully.',
-   // Return the updated or newly created payment information
-], 200);
-    }
 
     public function destroy($id)
     {
@@ -149,6 +88,130 @@ return response()->json([
         $debt->delete();
         return response()->json(['message' => 'Debt deleted successfully.']);
     }
+
+    /**
+ * Update payment for a transaction and handle multiple debts if excess payment
+ *
+ * @param Request $request
+ * @param int $id
+ * @return JsonResponse
+ */
+public function updateDebtPayment(Request $request, $id)
+{
+    $validator = Validator::make($request->all(), [
+        'amount_paid' => 'required|numeric|min:0',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
+    }
+
+    // Find the transaction
+    $transaction = Transaction::findOrFail($id);
+
+    // Calculate the new amount paid
+    $newAmountPaid = $request->amount_paid;
+    $oldAmountPaid = $transaction->amount_paid;
+    $additionalPayment = $newAmountPaid - $oldAmountPaid;
+
+    // If there's no additional payment, just return the transaction
+    if ($additionalPayment <= 0) {
+        return response()->json($transaction->load('customer'));
+    }
+
+    // Update the transaction amount paid
+    $transaction->amount_paid = $newAmountPaid;
+
+    // Determine the new payment status
+    $transaction->payment_status = $this->determinePaymentStatus($newAmountPaid, $transaction->total_amount);
+    $transaction->save();
+
+    // Calculate if there's excess payment after covering this transaction's debt
+    $currentDebt = $transaction->total_amount - $oldAmountPaid;
+    $excessPayment = $additionalPayment - $currentDebt;
+
+    // Update or delete the debt record for this transaction
+    $currentDebtRecord = Debt::where('transaction_id', $transaction->id)->first();
+
+    if ($currentDebtRecord) {
+        if ($excessPayment >= 0) {
+            // If excess payment covers the entire debt, delete the debt record
+            //$currentDebtRecord->delete();
+        } else {
+            // Otherwise update the debt amount
+            $currentDebtRecord->amount = $transaction->total_amount - $newAmountPaid;
+            $currentDebtRecord->save();
+        }
+    }
+
+    // If there's excess payment, apply it to other debts from the same customer
+    if ($excessPayment > 0) {
+        $this->applyExcessPaymentToDebts($transaction->customer_id, $excessPayment);
+    }
+
+    return response()->json([
+        'transaction' => $transaction->load('customer'),
+        'message' => $excessPayment > 0 ?
+            'Payment updated and excess amount applied to other debts.' :
+            'Payment updated successfully.'
+    ]);
+}
+/**
+ * Apply excess payment to other debts from the same customer
+ *
+ * @param int $customerId
+ * @param float $excessPayment
+ * @return void
+ */
+private function applyExcessPaymentToDebts($customerId, $excessPayment)
+{
+    // Get all pending debts for this customer, ordered by creation date (oldest first)
+    $otherDebts = Debt::where('customer_id', $customerId)
+                      ->where('status', 'pending')
+                      ->orderBy('created_at', 'asc')
+                      ->with('transaction')
+                      ->get();
+
+    foreach ($otherDebts as $debt) {
+        // If we've used all the excess payment, break out of the loop
+        if ($excessPayment <= 0) {
+            break;
+        }
+
+        $transaction = $debt->transaction;
+
+        // Calculate how much of this debt can be paid with the excess
+        $debtAmount = $debt->amount;
+        $paymentToApply = min($excessPayment, $debtAmount);
+
+        // Update the transaction's amount paid
+        $transaction->amount_paid += $paymentToApply;
+        $transaction->payment_status = $this->determinePaymentStatus(
+            $transaction->amount_paid,
+            $transaction->total_amount
+        );
+        $transaction->save();
+
+        // Update or delete the debt record
+        if ($paymentToApply >= $debtAmount) {
+            // If payment covers the entire debt, delete the debt record
+            //$debt->delete();
+        } else {
+            // Otherwise update the debt amount
+            $debt->amount = $debtAmount - $paymentToApply;
+            $debt->save();
+        }
+
+        // Reduce the excess payment by the amount applied
+        $excessPayment -= $paymentToApply;
+    }
+
+    // If there's still excess payment after clearing all debts, you could:
+    // 1. Add a credit record for the customer
+    // 2. Refund the excess
+    // 3. Leave it as an overpayment on the current transaction
+    // For now, we'll just leave it as an overpayment on the current transaction
+}
 
     public function getCustomerDebts($customerId)
     {
@@ -370,6 +433,25 @@ public function downloadDebtsPdf($customerId)
         // Log the error for debugging
         Log::error('PDF generation error', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Failed to generate PDF', 'error' => $e->getMessage()], 500);
+    }
+}
+
+
+/**
+ * Determine the payment status based on amount paid vs total amount
+ *
+ * @param float $amountPaid
+ * @param float $totalAmount
+ * @return string
+ */
+private function determinePaymentStatus($amountPaid, $totalAmount)
+{
+    if ($amountPaid >= $totalAmount) {
+        return 'paid';
+    } elseif ($amountPaid > 0) {
+        return 'partial';
+    } else {
+        return 'unpaid';
     }
 }
 }
