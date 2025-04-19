@@ -22,7 +22,8 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        return response()->json(Transaction::with(['customer', 'items.service'])->get());
+        $transactions = Transaction::with(['customer', 'items.service'])->limit(50)->get();
+        return response()->json($transactions);
     }
 
     public function store(Request $request)
@@ -74,7 +75,7 @@ class TransactionController extends Controller
         }
 
         // Handle debt management for unpaid transactions
-        $this->handleDebtManagement($request, $transaction, $total_amount);
+        $this->handleDebtManagement($request,$payment_status, $transaction, $total_amount);
 
         return response()->json($transaction->load('items.service'), 201);
     }
@@ -150,9 +151,9 @@ private function determinePaymentStatus($amountPaid, $totalAmount)
         return response()->json(['message' => 'Transaction deleted successfully.']);
     }
 
-    private function handleDebtManagement(Request $request, Transaction $transaction, $total_amount)
+    private function handleDebtManagement(Request $request,$payment_status, Transaction $transaction, $total_amount)
     {
-        if ($request->payment_status !== 'paid') {
+        if ($payment_status !== 'paid') {
             $debt_amount = $total_amount - $request->amount_paid;
 
             if ($debt_amount > 0) {
