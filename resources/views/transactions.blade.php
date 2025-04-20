@@ -409,8 +409,10 @@ $(document).ready(function() {
 
             showToast('success', 'Transaction enregistrée avec succès');
             $('#transactionModal').modal('hide');
+            window.location.reload();
             resetForm();
             loadInitialData();
+
         } catch (error) {
             handleError(error);
         }
@@ -861,7 +863,7 @@ function loadInvoice(transaction) {
 
             <div class="footer mt-5 text-center">
                 <p class="small">
-                    Just multi services 
+                    Just multi services
                     Merci de votre confiance !
                 </p>
             </div>

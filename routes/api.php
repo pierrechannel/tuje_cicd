@@ -164,3 +164,29 @@ Route::middleware(['auth'])->group(function () {
         ->name('services.price.export');
 });
 */
+
+// ****************************************************************************
+
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\StockController;
+use Illuminate\Support\Facades\Route;
+
+// Category routes
+Route::apiResource('categories', CategoryController::class);
+
+// Supplier routes
+Route::apiResource('suppliers', SupplierController::class);
+
+// Product routes
+Route::apiResource('products', ProductController::class);
+Route::get('products/stock/low', [ProductController::class, 'lowStock']);
+Route::get('products/stock/out', [ProductController::class, 'outOfStock']);
+
+// Stock management routes
+Route::post('stock/receive', [StockController::class, 'receiveStock']);
+Route::post('stock/ship', [StockController::class, 'shipStock']);
+Route::get('stock/history', [StockController::class, 'stockHistory']);
+Route::get('stock/inventory', [StockController::class, 'inventory']);
+Route::get('stock/alerts', [StockController::class, 'stockAlert
